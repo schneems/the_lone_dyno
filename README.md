@@ -4,6 +4,8 @@
 
 Isolate code to only run on a certain number of Heroku dynos. Using and Postgres [advisory locks](http://www.postgresql.org/docs/9.1/static/explicit-locking.html). You can later trigger events using Postgres listen/notify.
 
+[![Build Status](https://travis-ci.org/schneems/the_lone_dyno.svg?branch=master)](https://travis-ci.org/schneems/the_lone_dyno)
+
 ## Why?
 
 Why would you want to run code on only one dyno? Maybe you want to add some performance monitoring code to a critical path in production, you don't want to slow down all your dynos, so you can retain throughput by isolating to only run on one dyno. Maybe you want to test out a refactoring or change, instead of rolling it out to all of your service, you could run it on a select number. Whatever the reason, if you want to run some code on only a few dynos, this is the gem for you!
