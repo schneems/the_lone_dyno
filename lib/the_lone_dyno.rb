@@ -1,12 +1,12 @@
 require "the_lone_dyno/version"
-require 'pg_lock'
+require "pg_lock"
 
 module TheLoneDyno
   DEFAULT_KEY = "the_lone_dyno_hi_ho_silver"
 
   # Use to ensure only `dynos` count of dynos are exclusively running
   # the given block
-  def self.exclusive(background: true, dynos: 1, key_base: DEFAULT_KEY, connection: PgLock::DEFAULT_CONNECTION.call, &block)
+  def self.exclusive(background: true, dynos: 1, key_base: DEFAULT_KEY, connection: ::PgLock::DEFAULT_CONNECTION_CONNECTOR.call, &block)
     if background
       Thread.new do
         forever_block = Proc.new { |*args| block.call(*args); while true do; sleep 180 ; end; }
@@ -18,7 +18,7 @@ module TheLoneDyno
   end
 
   # Use to send a custom signal to any exclusive running dynos
-  def self.signal(payload = "", dynos: 1, key_base: DEFAULT_KEY, connection: PgLock::DEFAULT_CONNECTION.call, &block)
+  def self.signal(payload = "", dynos: 1, key_base: DEFAULT_KEY, connection: ::PgLock::DEFAULT_CONNECTION_CONNECTOR.call, &block)
     Lock.new(key_base, dynos).keys.each do |key|
       message = "NOTIFY #{key}, '#{payload}'"
       puts message

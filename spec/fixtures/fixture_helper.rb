@@ -15,5 +15,5 @@ rescue ActiveRecord::NoDatabaseError => e
 end
 
 def testing_key(base = nil)
-  [base, ENV["TRAVIS_BUILD_ID"] , ENV["TRAVIS_JOB_ID"] ].compact.join(":")
+  [base, ENV["TRAVIS_BUILD_ID"] , ENV["TRAVIS_JOB_ID"] ].compact.join("_")
 end
