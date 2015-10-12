@@ -5,6 +5,28 @@ describe TheLoneDyno do
     expect(TheLoneDyno::VERSION).not_to be nil
   end
 
+  it "runs on web process type by default" do
+    begin
+      web_log = new_log_file
+      pid = Process.spawn("env DYNO=web.1234 bundle exec ruby #{ fixture_path("once.rb") } >> #{web_log}")
+      Process.wait(pid)
+
+      expect_log_has_count(log: web_log, count: 1)
+    ensure
+      FileUtils.remove_entry_secure(web_log)
+    end
+
+    begin
+      worker_log = new_log_file
+      pid = Process.spawn("env DYNO=worker.1234 bundle exec ruby #{ fixture_path("once.rb") } >> #{worker_log}")
+      Process.wait(pid)
+
+      expect_log_has_count(log: worker_log, count: 0)
+    ensure
+      FileUtils.remove_entry_secure(worker_log)
+    end
+  end
+
   it "runs in the syncronously when you want" do
     log = new_log_file
     pid = Process.spawn("bundle exec ruby #{ fixture_path("foreground.rb") } >> #{log}")

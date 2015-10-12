@@ -3,10 +3,14 @@ require "pg_lock"
 
 module TheLoneDyno
   DEFAULT_KEY = "the_lone_dyno_hi_ho_silver"
+  WEB_PROCESS_TYPE_REGEX = /\Aweb/
 
   # Use to ensure only `dynos` count of dynos are exclusively running
   # the given block
-  def self.exclusive(background: true, dynos: 1, key_base: DEFAULT_KEY, connection: ::PgLock::DEFAULT_CONNECTION_CONNECTOR.call, &block)
+  def self.exclusive(background: true, dynos: 1, process_type: WEB_PROCESS_TYPE_REGEX, key_base: DEFAULT_KEY, connection: ::PgLock::DEFAULT_CONNECTION_CONNECTOR.call, &block)
+
+    return if process_type && ENV["DYNO"] && !ENV["DYNO"].match(process_type)
+
     if background
       Thread.new do
         forever_block = Proc.new { |*args| block.call(*args); while true do; sleep 180 ; end; }

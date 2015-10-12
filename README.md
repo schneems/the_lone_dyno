@@ -2,7 +2,7 @@
 
 # TheLoneDyno
 
-Isolate code to only run on a certain number of Heroku dynos. Using and Postgres [advisory locks](http://www.postgresql.org/docs/9.1/static/explicit-locking.html). You can later trigger events using Postgres listen/notify.
+Isolate code to only run on a certain number of Heroku dynos. Uses Postgres [advisory locks](http://www.postgresql.org/docs/9.1/static/explicit-locking.html) to isolate behavior and Postgres [LISTEN/NOTIFY](http://www.postgresql.org/docs/9.1/static/sql-notify.html) to trigger custom events.
 
 [![Build Status](https://travis-ci.org/schneems/the_lone_dyno.svg?branch=master)](https://travis-ci.org/schneems/the_lone_dyno)
 
@@ -12,7 +12,7 @@ Why would you want to run code on only one dyno? Maybe you want to add some perf
 
 Why is this needed? All Heroku dynos operate independently of one another. Once one is running you can't change it. You can `$ heroku run bash` but this gives you a new dyno that doesn't receieve any web traffic. If you want to run code on only a certain number of dynos it's been difficult to do so until now.
 
-> Be warned, only changing behavior on 1 dyno in your app, could cause difficult to reproduce problems. "I'm getting an error but only once fore every 20 requests". Using this library is an advanced technique and should be implemented with care. Make sure to tell the rest of your team what you're doing, and remove the code from your codebase as soon as you're done.
+> Be warned, only changing behavior on 1 dyno in your app, could cause difficult to reproduce problems. "I'm getting an error, but only once fore every 20 requests". Using this library is an advanced technique and should be implemented with care. Make sure to tell the rest of your team what you're doing, and remove the code from your codebase as soon as you're done.
 
 ## Installation
 
@@ -46,7 +46,7 @@ end
 puts "Does not block future code execution"
 ```
 
-This code will only run on one dyno. By default code passed into the block will run in the background and the lock will be held for as long as your process is alive. For example if we run the above code we should get:
+This code will only run on one dyno (by default in a "web" process type). The code passed into the block will run in the background and the lock will be held for as long as your process is alive. For example if we run the above code we should get:
 
 ```
 Does not block future code execution
@@ -105,7 +105,19 @@ TheLoneDyno.exclusive do |signal|
 end
 ```
 
-## Config
+## Restricting to Process Type
+
+By default `the_lone_dyno` is restricted to only run in the `web` process type dynos. It does this using the [DYNO environment variable](https://devcenter.heroku.com/articles/dynos#local-environment-variables). You can set this to another process type:
+
+```ruby
+TheLoneDyno.exclusive(process_type: "worker") do
+  # Code you only want to run on 5 dyno
+end
+```
+
+This will attempt to lock any DYNO environment variable containing "worker" string. You can use a string or a regex. if the `$DYNO` environment variable isn't present or if `process_type` is set to `false` then the check will be skipped and the first process to boot will aquire the lock regardless of dyno type. This behavior is purposful so you can aquire and lock on your local develoment machine.
+
+## Running on more than 1 Dyno
 
 You can control the number of dynos you run code on by passing in an integer:
 
@@ -114,6 +126,8 @@ TheLoneDyno.exclusive(dynos: 5) do
   # Code you only want to run on 5 dyno
 end
 ```
+
+## Using multiple locks on the same app
 
 Under the hood this uses PG advisory locks. If you need to customize the default advisory key, for instance if you want to have multiple processes you want to isolate to a set of dynos you can use the `key_base:` key, for example:
 
