@@ -2,7 +2,7 @@
 
 # TheLoneDyno
 
-Isolate code to only run on a certain number of Heroku dynos. Uses Postgres [advisory locks](http://www.postgresql.org/docs/9.1/static/explicit-locking.html) to isolate behavior and Postgres [LISTEN/NOTIFY](http://www.postgresql.org/docs/9.1/static/sql-notify.html) to trigger custom events.
+Isolate code to only run on a certain number of Heroku dynos. Then use [LISTEN/NOTIFY](http://www.postgresql.org/docs/9.1/static/sql-notify.html) to trigger custom events on those dynos.
 
 [![Build Status](https://travis-ci.org/schneems/the_lone_dyno.svg?branch=master)](https://travis-ci.org/schneems/the_lone_dyno)
 
@@ -13,6 +13,10 @@ Why would you want to run code on only one dyno? Maybe you want to add some perf
 Why is this needed? All Heroku dynos operate independently of one another. Once one is running you can't change it. You can `$ heroku run bash` but this gives you a new dyno that doesn't receieve any web traffic. If you want to run code on only a certain number of dynos it's been difficult to do so until now.
 
 > Be warned, only changing behavior on 1 dyno in your app, could cause difficult to reproduce problems. "I'm getting an error, but only once fore every 20 requests". Using this library is an advanced technique and should be implemented with care. Make sure to tell the rest of your team what you're doing, and remove the code from your codebase as soon as you're done.
+
+## How
+
+A big change happened between version 0.1 and 1.0. We are no longer using Postgres advisory locks. Instead we're depending on the `DYNO=web.1` environment variables. This makes behavior more predictable and easier to reason about.
 
 ## Installation
 
@@ -115,7 +119,7 @@ TheLoneDyno.exclusive(process_type: "worker") do
 end
 ```
 
-This will attempt to lock any DYNO environment variable containing "worker" string. You can use a string or a regex. if the `$DYNO` environment variable isn't present or if `process_type` is set to `false` then the check will be skipped and the first process to boot will aquire the lock regardless of dyno type. This behavior is purposful so you can aquire and lock on your local develoment machine.
+This will attempt to lock any DYNO environment variable containing "worker" string.
 
 ## Running on more than 1 Dyno
 
@@ -129,7 +133,7 @@ end
 
 ## Using multiple locks on the same app
 
-Under the hood this uses PG advisory locks. If you need to customize the default advisory key, for instance if you want to have multiple processes you want to isolate to a set of dynos you can use the `key_base:` key, for example:
+If you need to customize the default listen key, for instance if you want to have multiple processes you want to isolate to a set of dynos you can use the `key_base:` key, for example:
 
 ```ruby
 TheLoneDyno.exclusive(key_base: "reticulate splines") do
@@ -144,7 +148,6 @@ end
 ## Run Syncronously in the Foreground
 
 If you don't want to run your exclusive process in the background you can force it to run syncronously using `background: false`. For example:
-
 
 ```ruby
 TheLoneDyno.exclusive(background: false) do |signal|
@@ -175,7 +178,7 @@ Keep in mind that your lock is only held for the duration of your block, so if t
 
 ## Connection
 
-By default The Lone Dyno assumes you're using Active Record and already have a connection configured. If you want to use a different ORM, you'll need to provide TheLoneDyno with an object that responds to `exec` that executes arbitrary SQL. Under the hood this library uses [pg_lock](https://github.com/heroku/pg_lock#database-connection). So that's how you can configure the connection
+By default The Lone Dyno assumes you're using Active Record and already have a connection configured. If you want to use a different ORM, you'll need to provide TheLoneDyno with an object that responds to `exec` that executes arbitrary SQL. Under the hood this library uses [hey_you](https://github.com/heroku/hey_you#database-connection). So that's how you can configure the connection
 
 ```
 connection = Module do
@@ -192,7 +195,7 @@ end
 You can alternatively set the `DEFAULT_CONNECTION`
 
 ```
-Pg::Lock = Module do
+HeyYou::DEFAULT_CONNECTION = Module do
   def self.exec(sql, bind)
     DB.fetch(sql, bind)
   end

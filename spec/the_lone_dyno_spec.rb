@@ -8,7 +8,7 @@ describe TheLoneDyno do
   it "runs on web process type by default" do
     begin
       web_log = new_log_file
-      pid = Process.spawn("env DYNO=web.1234 bundle exec ruby #{ fixture_path("once.rb") } >> #{web_log}")
+      pid = Process.spawn("env DYNO=web.1 bundle exec ruby #{ fixture_path("once.rb") } >> #{web_log}")
       Process.wait(pid)
 
       expect_log_has_count(log: web_log, count: 1)
@@ -18,7 +18,7 @@ describe TheLoneDyno do
 
     begin
       worker_log = new_log_file
-      pid = Process.spawn("env DYNO=worker.1234 bundle exec ruby #{ fixture_path("once.rb") } >> #{worker_log}")
+      pid = Process.spawn("env DYNO=worker.1 bundle exec ruby #{ fixture_path("once.rb") } >> #{worker_log}")
       Process.wait(pid)
 
       expect_log_has_count(log: worker_log, count: 0)
@@ -29,7 +29,7 @@ describe TheLoneDyno do
 
   it "runs in the syncronously when you want" do
     log = new_log_file
-    pid = Process.spawn("bundle exec ruby #{ fixture_path("foreground.rb") } >> #{log}")
+    pid = Process.spawn("env DYNO=web.1 bundle exec ruby #{ fixture_path("foreground.rb") } >> #{log}")
     Process.wait(pid)
 
     expect(File.read(log)).to eq("foreground 1\nforeground 2\n")
@@ -39,7 +39,7 @@ describe TheLoneDyno do
     log = new_log_file
     begin
 
-      pid = Process.spawn("bundle exec ruby #{ fixture_path("listen.rb") } >> #{log}")
+      pid = Process.spawn("env DYNO=web.1 bundle exec ruby #{ fixture_path("listen.rb") } >> #{log}")
 
       sleep 5
       TheLoneDyno.signal("hi there", key_base: testing_key("listen"))
@@ -55,8 +55,8 @@ describe TheLoneDyno do
   it "only runs once" do
     begin
       log = new_log_file
-      5.times.map do
-        Process.spawn("bundle exec ruby #{ fixture_path("once.rb") } >> #{log}")
+      5.times.map do |i|
+        Process.spawn("env DYNO=web.#{i} bundle exec ruby #{ fixture_path("once.rb") } >> #{log}")
       end.each do |pid|
         Process.wait(pid)
       end
@@ -70,8 +70,8 @@ describe TheLoneDyno do
     begin
       count = rand(2..4)
       log   = new_log_file
-      5.times.map do
-        Process.spawn("env COUNT=#{count} bundle exec ruby #{ fixture_path("run_x_times.rb") } >> #{log}")
+      5.times.map do |i|
+        Process.spawn("env DYNO=web.#{i} COUNT=#{count} bundle exec ruby #{ fixture_path("run_x_times.rb") } >> #{log}")
       end.each do |pid|
         Process.wait(pid)
       end
